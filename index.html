@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quantum Tunneling Calculator</title>
+<style>
+:root{--bg:#f3f6f9;--panel:#fff;--ink:#14202b;--mute:#5a6b7a;--line:#d5dde5;--wave:#1b7fa8;--bar:#c9d6e2;--bar2:#8aa2b8;--acc:#c0392b;--good:#1d8a5a;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1620;--panel:#162230;--ink:#e6eef5;--mute:#93a6b8;--line:#2a3b4c;--wave:#4cb8e0;--bar:#2b4156;--bar2:#5f819e;--acc:#ff7a6b;--good:#4fd39b}}
+:root[data-theme="dark"]{--bg:#0e1620;--panel:#162230;--ink:#e6eef5;--mute:#93a6b8;--line:#2a3b4c;--wave:#4cb8e0;--bar:#2b4156;--bar2:#5f819e;--acc:#ff7a6b;--good:#4fd39b}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5}
+.wrap{max-width:980px;margin:0 auto;padding:24px 16px 48px}
+h1{font-family:"IBM Plex Serif",Georgia,serif;font-weight:600;font-size:clamp(26px,5vw,38px);margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 20px;max-width:62ch}
+.grid{display:grid;grid-template-columns:300px 1fr;gap:16px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+label{display:block;font-size:14px;margin-top:12px;font-weight:500}
+label small{color:var(--mute);font-weight:400}
+input[type=text]{width:100%;margin-top:4px;padding:8px 10px;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--wave);outline-offset:1px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+button{font:inherit;font-size:13px;padding:6px 10px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--wave)}
+.result{margin-bottom:16px}
+.big{font-family:"IBM Plex Serif",Georgia,serif;font-size:clamp(28px,6vw,44px);line-height:1.15;margin:4px 0;word-break:break-word}
+.tag{display:inline-block;font-size:13px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--mute)}
+.tag.ap{border-color:var(--acc);color:var(--acc)}.tag.ex{border-color:var(--good);color:var(--good)}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px;font-size:14px}
+.meta div{border-top:1px solid var(--line);padding-top:6px}.meta b{display:block;font-size:12px;color:var(--mute);font-weight:500}
+canvas{width:100%;height:300px;display:block}
+.gauge{margin-top:14px}.gbar{height:12px;border-radius:6px;background:linear-gradient(90deg,var(--good),var(--wave) 40%,var(--acc));position:relative;opacity:.9}
+.gmark{position:absolute;top:-5px;width:4px;height:22px;background:var(--ink);border-radius:2px;transform:translateX(-2px)}
+.gl{display:flex;justify-content:space-between;font-size:12px;color:var(--mute);margin-top:6px}
+.note{font-size:13px;color:var(--mute);margin-top:12px}
+.err{color:var(--acc);font-size:13px;min-height:18px;margin-top:8px}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+button.on{border-color:var(--wave);color:var(--wave);font-weight:600}
+#cv2{height:260px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Quantum tunneling calculator</h1>
+<p class="sub">A particle with energy E meets a rectangular barrier of height V₀ and width d. How likely is it to appear on the other side?</p>
+<div class="grid">
+<div class="panel">
+<b>Inputs</b>
+<div class="presets" id="presets"></div>
+<label>Barrier potential V₀ <small>(J)</small><input type="text" id="V" inputmode="decimal"></label>
+<label>Object energy E <small>(J)</small><input type="text" id="E" inputmode="decimal"></label>
+<label>Mass m <small>(kg)</small><input type="text" id="m" inputmode="decimal"></label>
+<label>Barrier width d <small>(m)</small><input type="text" id="d" inputmode="decimal"></label>
+<div class="err" id="err"></div>
+<p class="note">All inputs are SI: joules, kilograms, metres. Scientific notation works (e.g. 9.11e-31). Width is needed because tunneling depends on how thick the barrier is.</p>
+</div>
+<div>
+<div class="panel result">
+<span class="tag" id="mode"></span>
+<div class="big" id="T"></div>
+<div id="odds" style="color:var(--mute)"></div>
+<div class="meta">
+<div><b>Decay constant α</b><span id="alpha"></span></div>
+<div><b>αd (dimensionless)</b><span id="ad"></span></div>
+<div><b>Classical outcome</b><span id="cls"></span></div>
+</div>
+<div class="gauge"><div class="gbar"><div class="gmark" id="gm"></div></div>
+<div class="gl"><span>T = 1</span><span>10⁻¹⁶</span><span>10⁻³²</span><span>10⁻⁴⁸ or less</span></div></div>
+</div>
+<div class="panel">
+<canvas id="cv" role="img" aria-label="Wave function meeting a potential barrier"></canvas>
+<p class="note" id="vnote"></p>
+</div>
+<div class="panel" style="margin-top:16px">
+<div class="hd"><b>Probability distribution |ψ(x)|²</b><span><button id="b1" class="on" onclick="setPM('log')">Log scale</button> <button id="b2" onclick="setPM('lin')">Linear</button></span></div>
+<canvas id="cv2" role="img" aria-label="Probability density across the barrier"></canvas>
+<p class="note" id="pnote"></p>
+</div>
+</div>
+</div>
+<p class="note">Method: for T ≥ 10⁻¹⁶ the exact rectangular-barrier result is used. Below that, T ≈ e<sup>−2αd</sup> with α = √(2m(V₀−E))/ħ, reported as an order of magnitude.</p>
+</div>
+<script>
+var HB=1.054571817e-34,EV=1.602176634e-19,LN10=Math.LN10;
+var PRE=[
+{n:"Electron",V:8.011e-19,E:1.602e-19,m:9.109e-31,d:5e-10},
+{n:"Proton",V:1.602e-12,E:8.011e-13,m:1.6726e-27,d:5e-15},
+{n:"Alpha particle",V:4.005e-12,E:6.729e-13,m:6.645e-27,d:3e-14},
+{n:"Baseball",V:150,E:100,m:0.145,d:0.1},
+{n:"Person through a wall",V:1000,E:70,m:70,d:0.2}
+];
+var $=function(i){return document.getElementById(i)};
+var pe=$("presets");
+PRE.forEach(function(p){var b=document.createElement("button");b.textContent=p.n;b.onclick=function(){$("V").value=p.V;$("E").value=p.E;$("m").value=p.m;$("d").value=p.d;run()};pe.appendChild(b)});
+["V","E","m","d"].forEach(function(i){$(i).addEventListener("input",run)});
+$("V").value=8.011e-19;$("E").value=1.602e-19;$("m").value=9.109e-31;$("d").value=5e-10;
+
+function fmtN(x){ // plain number, sci when large
+ var a=Math.abs(x);if(a===0)return"0";
+ if(a>=1e6||a<1e-3){var e=x.toExponential(2).split("e");return e[0]+" × 10<sup>"+parseInt(e[1])+"</sup>"}
+ return x.toPrecision(3)}
+function pow10(e){ // e = log10 value (negative); returns html "10^-N"
+ var a=Math.abs(e);
+ if(a<1e6)return"10<sup>−"+a.toFixed(a<100?1:0)+"</sup>";
+ var s=a.toExponential(2).split("e");
+ return"10<sup>−"+s[0]+" × 10<sup>"+parseInt(s[1])+"</sup></sup>"}
+
+function calc(m,Vev,Eev,dnm){
+ var V=Vev,E=Eev,d=dnm,r={};
+ if(E<V){
+  var a=Math.sqrt(2*m*(V-E))/HB,x=a*d;r.alpha=a;r.ad=x;r.cls="Reflected";
+  r.log=-2*x/LN10;
+  if(2*x<600){var sh=Math.sinh(x);r.T=1/(1+V*V*sh*sh/(4*E*(V-E)))}
+ }else{
+  r.cls="Passes over";r.alpha=0;r.ad=0;
+  var T;
+  if(E>V){var k=Math.sqrt(2*m*(E-V))/HB,s=Math.sin(k*d);T=1/(1+V*V*s*s/(4*E*(E-V)))}
+  else T=1/(1+m*V*d*d/(2*HB*HB));
+  r.T=T;
+ }
+ r.exact=(r.T!==undefined&&r.T>=1e-16);
+ if(r.exact)r.log=Math.log10(r.T);
+ else if(r.log===undefined)r.log=Math.log10(Math.max(r.T,1e-300));
+ return r}
+
+function run(){
+ var m=parseFloat($("m").value),V=parseFloat($("V").value),E=parseFloat($("E").value),d=parseFloat($("d").value);
+ var er="";
+ if(!(m>0))er="Mass must be a positive number.";
+ else if(!(V>0))er="Barrier potential must be above 0.";
+ else if(!(E>0))er="Energy must be above 0.";
+ else if(!(d>0))er="Barrier width must be above 0.";
+ $("err").textContent=er;if(er)return;
+ var r=calc(m,V,E,d);window._r={r:r,V:V,E:E};
+ var md=$("mode");
+ if(r.exact){md.textContent="Exact rectangular-barrier result";md.className="tag ex";
+  $("T").innerHTML="T = "+(r.T>=0.01?r.T.toPrecision(4):r.T.toExponential(3).replace(/e(-?\d+)/,function(_,e){return" × 10<sup>"+parseInt(e)+"</sup>"}));
+  $("odds").innerHTML=r.T>=0.5?"Most attempts get through.":"About 1 in "+fmtN(1/r.T)+" attempts gets through."}
+ else{md.textContent="Approximation T ≈ e^(−2αd), order of magnitude";md.className="tag ap";
+  $("T").innerHTML="T ~ "+pow10(r.log);
+  $("odds").innerHTML="About 1 in "+pow10(r.log).replace("−","")+" attempts gets through."}
+ $("alpha").innerHTML=r.alpha?fmtN(r.alpha)+" m⁻¹":"0 (E ≥ V₀)";
+ $("ad").innerHTML=r.alpha?fmtN(r.ad):"n/a";
+ $("cls").textContent=r.cls;
+ var f=Math.min(1,Math.abs(r.log)/48);$("gm").style.left=(f*100)+"%";setTimeout(draw2,0);
+ draw()}
+
+function draw(){
+ var o=window._r;if(!o)return;var r=o.r;
+ var cv=$("cv"),dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;
+ cv.width=W*dpr;cv.height=H*dpr;var c=cv.getContext("2d");c.setTransform(dpr,0,0,dpr,0,0);
+ var cs=getComputedStyle(document.documentElement),g=function(n){return cs.getPropertyValue(n).trim()};
+ c.clearRect(0,0,W,H);
+ var pad=16,base=H-28,top=24,Hh=base-top,x1=W*0.36,x2=W*0.64;
+ var vmax=Math.max(o.V,o.E)*1.2,Y=function(e){return base-e/vmax*Hh};
+ // barrier
+ c.fillStyle=g("--bar");c.strokeStyle=g("--bar2");c.lineWidth=1.5;
+ c.fillRect(x1,Y(o.V),x2-x1,base-Y(o.V));c.strokeRect(x1,Y(o.V),x2-x1,base-Y(o.V));
+ c.fillStyle=g("--mute");c.font="12px system-ui,sans-serif";
+ c.fillText("V₀",x1+6,Y(o.V)+16);c.fillText("d",(x1+x2)/2-3,base+16);
+ c.beginPath();c.moveTo(x1,base+6);c.lineTo(x2,base+6);c.strokeStyle=g("--mute");c.lineWidth=1;c.stroke();
+ // energy line
+ var ye=Y(o.E);c.setLineDash([5,4]);c.strokeStyle=g("--mute");c.beginPath();c.moveTo(pad,ye);c.lineTo(W-pad,ye);c.stroke();c.setLineDash([]);
+ c.fillText("E",pad,ye-5);
+ var A=Math.min(24,Math.max(10,Hh*0.1)),minA=1.5;
+ var At=Math.max(A*Math.sqrt(Math.max(r.exact?r.T:Math.pow(10,Math.max(r.log,-300)),1e-300)),minA);
+ c.strokeStyle=g("--wave");c.lineWidth=2.2;c.lineJoin="round";
+ // incident (left)
+ c.beginPath();var k1=2*Math.PI/46;
+ for(var x=pad;x<=x1;x++){var y=ye-A*Math.cos(k1*(x-x1));x===pad?c.moveTo(x,y):c.lineTo(x,y)}c.stroke();
+ // inside
+ c.beginPath();var w=x2-x1,L=Math.log(A/At);
+ if(r.cls==="Reflected"){
+  for(var x=x1;x<=x2;x++){var y=ye-A*Math.exp(-L*(x-x1)/w);x===x1?c.moveTo(x,y):c.lineTo(x,y)}
+ }else{var k2=k1*0.8;for(var x=x1;x<=x2;x++){var y=ye-A*Math.cos(k2*(x-x1));x===x1?c.moveTo(x,y):c.lineTo(x,y)}}
+ c.stroke();
+ // transmitted
+ c.beginPath();var amp=r.cls==="Reflected"?At:A*Math.sqrt(r.T),ph=r.cls==="Reflected"?0:0;
+ for(var x=x2;x<=W-pad;x++){var y=ye-amp*Math.cos(k1*(x-x2)+ph);x===x2?c.moveTo(x,y):c.lineTo(x,y)}c.stroke();
+ c.fillStyle=g("--ink");c.fillText("Incident ψ",pad+4,top-6);
+ c.fillText("Barrier",x1+6,top-6);c.fillText("Transmitted ψ",x2+6,top-6);
+ var tiny=r.cls==="Reflected"&&(!r.exact)&&At<=minA*1.01;
+ $("vnote").textContent=r.cls!=="Reflected"?"E ≥ V₀: the object is not blocked, so the wave continues through the region (with partial reflection).":
+  (tiny?"The transmitted wave is drawn at a minimum visible size. Its true amplitude is far smaller than shown, so treat the picture as a schematic.":"Inside the barrier the wave decays as e^(−αx). The transmitted amplitude is √T times the incident amplitude.");
+}
+var pm="log";
+function setPM(m){pm=m;$("b1").className=m==="log"?"on":"";$("b2").className=m==="lin"?"on":"";draw2()}
+function draw2(){
+ var o=window._r;if(!o)return;var r=o.r;
+ var cv=$("cv2"),dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;
+ cv.width=W*dpr;cv.height=H*dpr;var c=cv.getContext("2d");c.setTransform(dpr,0,0,dpr,0,0);
+ var cs=getComputedStyle(document.documentElement),g=function(n){return cs.getPropertyValue(n).trim()};
+ var lT=r.log,refl=r.cls==="Reflected",R=r.exact?1-r.T:1,sR=Math.sqrt(Math.max(R,0));
+ var a0=Math.log10((1+sR)*(1+sR));
+ var L=pm==="log";
+ var logP=function(u){
+  if(u<0)return Math.log10(Math.max(1+R+2*sR*Math.cos(2*Math.PI*3*u),1e-6));
+  if(u<=1)return a0+(lT-a0)*u;
+  return lT};
+ var f=function(u){var v=logP(u);return L?v:Math.pow(10,v)};
+ var ymax=L?a0+0.2:Math.pow(10,a0)*1.1,ymin=L?Math.min(lT,-0.7):0;
+ if(L)ymin-=Math.abs(ymin)*0.06;
+ var pl=44,pr=12,top=14,bot=H-26,Hh=bot-top,PW=W-pl-pr;
+ var X=function(u){return pl+(u+1)/3*PW},Y=function(v){return bot-(v-ymin)/(ymax-ymin)*Hh};
+ c.clearRect(0,0,W,H);
+ c.fillStyle=g("--bar");c.globalAlpha=.55;c.fillRect(X(0),top,X(1)-X(0),Hh);c.globalAlpha=1;
+ c.strokeStyle=g("--line");c.lineWidth=1;c.strokeRect(pl,top,PW,Hh);
+ c.fillStyle=g("--mute");c.font="12px system-ui,sans-serif";
+ var et=function(e){return Math.abs(e)<1e6?e.toFixed(0):e.toExponential(1)};
+ if(L){
+  c.textAlign="right";c.fillText("10^"+et(ymax),pl-4,top+10);c.fillText("10^"+et(ymin),pl-4,bot);
+  if(ymin<0){var y0=Y(0);c.setLineDash([5,4]);c.beginPath();c.moveTo(pl,y0);c.lineTo(W-pr,y0);c.stroke();c.setLineDash([]);c.fillText("1",pl-4,y0+4)}
+ }else{c.textAlign="right";c.fillText(ymax.toPrecision(2),pl-4,top+10);c.fillText("0",pl-4,bot);
+  var y1=Y(1);c.setLineDash([5,4]);c.beginPath();c.moveTo(pl,y1);c.lineTo(W-pr,y1);c.stroke();c.setLineDash([]);c.fillText("1",pl-4,y1+4)}
+ c.textAlign="center";c.fillText("before",X(-.5),H-8);c.fillText("barrier",X(.5),H-8);c.fillText("after",X(1.5),H-8);
+ c.strokeStyle=g("--wave");c.lineWidth=2.2;c.lineJoin="round";c.beginPath();
+ for(var i=0;i<=600;i++){var u=-1+3*i/600,v=Math.min(Math.max(f(u),ymin),ymax),x=X(u),y=Y(v);i?c.lineTo(x,y):c.moveTo(x,y)}
+ c.stroke();
+ c.textAlign="left";c.fillStyle=g("--ink");
+ var tl=r.exact?"T = "+(r.T>=0.01?r.T.toPrecision(3):r.T.toExponential(2)):"T ~ 10^"+et(lT);
+ c.textAlign="right";c.fillText(tl,W-pr-6,Y(Math.min(Math.max(f(1.5),ymin),ymax))-8>top+12?Y(Math.min(Math.max(f(1.5),ymin),ymax))-8:top+24);
+ $("pnote").textContent=(L?"Log scale: the straight drop inside the barrier is the exponential decay e^(−2αx), and the level after it is T. ":"Linear scale: when T is tiny the region after the barrier sits at zero. ")+"Horizontal axis is in units of d and wave oscillations are not to scale; this is a schematic of the stationary state."+(refl?"":" Since E ≥ V₀ the object is not blocked classically.");
+}
+window.addEventListener("resize",function(){draw();draw2()});
+run();
+</script>
+</body>
+</html>
